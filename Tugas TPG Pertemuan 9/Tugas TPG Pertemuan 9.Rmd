@@ -1,1 +1,144 @@
-Tes
+---
+title: "Tugas TPG Clustering"
+author: "Fatih Avicenna Hizir"
+date: "2025-11-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Pendahuluan
+
+Analisis Gerombol (*Cluster Analysis*) digunakan untuk:
+
+-   Mengelompokkan objek berdasarkan **kemiripan karakteristik**.
+
+-   Mengidentifikasi pola dalam data multivariat.
+
+-   Membentuk segmentasi kelompok untuk analisis lebih lanjut.
+
+Jenis metode utama:
+
+-   **Hierarkis**: membentuk dendrogram dan menggabungkan objek secara bertahap.
+
+-   **Non-Hierarkis**: misalnya *K-Means* (berbasis partisi).
+
+Disini saya gunakan metode **Hierarkis** untuk tugas
+
+## **Hierarchical Clustering**
+
+**Konsep Dasar**
+
+Analisis Hierarkis dimulai dengan menghitung **jarak antar-objek**, kemudian objek digabung satu per satu berdasarkan tingkat kemiripan. Hasilnya divisualisasikan dalam **dendrogram** yang menggambarkan proses penggabungan cluster.
+
+##  Data dan Standarisasi
+
+Kita menggunakan dataset bawaan R USArrests, berisi data kriminalitas di 50 negara bagian Amerika Serikat dengan empat variabel:
+
+**Murder**, **Assault**, **UrbanPop**, dan **Rape**.
+
+```{r}
+data("USArrests")
+head(USArrests)
+dat <- na.omit(USArrests)
+data_scaled <- scale(dat)
+xname <- colnames(data_scaled)[1]
+yname <- colnames(data_scaled)[2]
+```
+
+## Matriks Jarak (Euclidean)
+
+Tahapan awal adalah membentuk matriks jarak berdasarkan jarak Euclidean, yang mengukur kemiripan antar-objek.
+
+```{r}
+dist_matrix <- dist(data_scaled, method = "euclidean")
+head(dist_matrix, 10)
+```
+
+## **Hierarchical Clustering dengan Metode Ward.D2**
+
+Metode Ward.D2 menggabungkan objek dengan meminimalkan variasi total di dalam cluster.
+
+```{r}
+hc_ward <- hclust(dist_matrix, method = "ward.D2")
+hc_ward
+```
+
+## Dendogram
+
+Dendrogram menunjukkan proses penggabungan antar objek atau cluster berdasarkan tingkat kemiripan. Setiap percabangan menandakan dua cluster yang digabung, dengan tinggi cabang mencerminkan jarak antar cluster.
+
+```{r}
+library(factoextra)
+
+fviz_dend(hc_ward, k = 3, rect = TRUE,
+          palette = "jco",
+          main = "Dendrogram – Hierarchical Clustering (Ward.D2)")
+```
+
+## Hasil Clustering
+
+Menentukan jumlah cluster (k = 3 contoh) dan melihat ukuran tiap cluster.
+
+```{r}
+cluster_hc <- cutree(hc_ward, k = 3)
+table(cluster_hc)
+```
+
+Berdasarkan hasil analisis gerombol dengan metode **Hierarchical Clustering (Ward.D2)** terhadap data *USArrests*, diperoleh tiga kelompok utama (k = 3) yang terbentuk dari 50 negara bagian di Amerika Serikat. Dendrogram menunjukkan struktur pengelompokan yang jelas, di mana garis potong pada tingkat jarak tertentu membagi seluruh observasi menjadi tiga cluster yang masing-masing terdiri atas 19, 19, dan 12 negara bagian. Metode Ward.D2 dipilih karena mampu meminimalkan variasi di dalam kelompok dan memaksimalkan perbedaan antar kelompok. Hasil perhitungan nilai rata-rata tiap variabel pada masing-masing cluster memperlihatkan bahwa **Cluster 1** memiliki nilai **Murder** dan **Assault** yang relatif tinggi, sedangkan **UrbanPop** berada pada tingkat menengah. Hal ini menunjukkan bahwa negara bagian dalam kelompok ini cenderung memiliki tingkat kriminalitas yang tinggi. **Cluster 2** ditandai oleh nilai **Murder** dan **Assault** yang rendah serta **UrbanPop** menengah, mencerminkan wilayah yang relatif aman dengan populasi urban yang tidak terlalu padat. Sementara itu, **Cluster 3** menunjukkan nilai **UrbanPop** yang tinggi dan tingkat kriminalitas sedang, sehingga kelompok ini dapat diartikan sebagai wilayah yang lebih urban dengan risiko kejahatan yang tidak setinggi Cluster 1. Secara keseluruhan, hasil clustering menggambarkan adanya variasi yang cukup jelas antara tingkat kriminalitas dan urbanisasi di berbagai negara bagian Amerika Serikat. Pengelompokan ini menunjukkan bahwa faktor-faktor seperti tingkat pembunuhan, penyerangan, dan kepadatan penduduk memiliki keterkaitan yang erat dalam membentuk pola sosial di tiap wilayah. Analisis ini memberikan gambaran bahwa wilayah dengan urbanisasi tinggi tidak selalu identik dengan kriminalitas tinggi, namun tetap memiliki karakteristik sosial yang membedakannya dari wilayah yang lebih aman dan rural.
+
+## Karakterisitik Cluster
+
+Mengetahui rata-rata tiap variabel pada setiap cluster untuk melihat perbedaan utama antar kelompok.
+
+```{r}
+library(dplyr)
+
+data_clustered <- dat %>%
+  mutate(cluster = factor(cluster_hc))
+
+cluster_summary <- data_clustered %>%
+  group_by(cluster) %>%
+  summarise(
+    Murder   = mean(Murder),
+    Assault  = mean(Assault),
+    UrbanPop = mean(UrbanPop),
+    Rape     = mean(Rape),
+    .groups = "drop"
+  )
+cluster_summary_num <- cluster_summary %>%
+  mutate(across(where(is.numeric), ~ round(.x, 2)))
+
+cluster_summary_num
+```
+
+Berdasarkan hasil analisis gerombol dengan metode **Hierarchical Clustering (Ward.D2)** terhadap data *USArrests*, diperoleh tiga kelompok utama yang menunjukkan perbedaan karakteristik tingkat kriminalitas dan urbanisasi di Amerika Serikat. **Cluster 1** memiliki rata-rata tingkat pembunuhan (Murder) sebesar 12.33 dan penyerangan (Assault) sebesar 259.32, dengan tingkat populasi urban (UrbanPop) 68.32 dan pemerkosaan (Rape) 29.11, menggambarkan wilayah dengan tingkat kriminalitas tinggi dan urbanisasi cukup besar seperti Alabama, Georgia, dan Louisiana. **Cluster 2** memiliki nilai Murder sebesar 6.21 dan Assault 142.05 dengan UrbanPop 71.26 dan Rape 19.37, menunjukkan daerah dengan tingkat kriminalitas sedang hingga rendah namun dengan populasi urban yang tinggi. Sementara itu, **Cluster 3** memiliki nilai Murder 3.09 dan Assault 76.00, dengan UrbanPop 52.08 dan Rape 11.26, yang mencerminkan wilayah dengan tingkat kriminalitas rendah dan populasi urban yang kecil atau rural. Secara keseluruhan, hasil ini menunjukkan bahwa semakin tinggi tingkat urbanisasi suatu wilayah, kecenderungan kriminalitas juga meningkat, meskipun tidak semua daerah urban memiliki tingkat kejahatan yang sama.
+
+## **Visualisasi Cluster (2 Variabel Pertama)**
+
+Menampilkan sebaran data berdasarkan dua variabel pertama sebagai gambaran sederhana pemisahan cluster.
+
+```{r}
+plot(data_scaled[,1], data_scaled[,2],
+     col = cluster_hc, pch = 19,
+     xlab = xname, ylab = yname,
+     main = "Sebaran (2 variabel pertama) – 3 Cluster")
+legend("topright", legend = paste("Cluster", 1:3),
+       col = 1:3, pch = 19, bty = "n")
+```
+
+-   **Cluster 1** memiliki nilai rata-rata **Assault** dan **Murder** tinggi -\> wilayah dengan tingkat kriminalitas kekerasan lebih tinggi.
+
+-   **Cluster 2** menunjukkan **UrbanPop** tinggi -\> wilayah lebih urban.
+
+-   **Cluster 3** relatif rendah di semua variabel -\> wilayah lebih aman atau kurang urban.
+
+## Kesimpulan
+
+1.  Dengan metode **Hierarkis Ward.D2**, terbentuk 3 cluster berbeda berdasarkan tingkat kriminalitas dan urbanisasi.
+
+2.  Dendrogram menunjukkan struktur pemisahan yang jelas dan memudahkan identifikasi kelompok yang mirip.
+
+3.  Hasil clustering dapat digunakan untuk analisis lanjutan, misalnya membandingkan profil antar cluster atau menentukan kebijakan spesifik untuk masing-masing kelompok.
